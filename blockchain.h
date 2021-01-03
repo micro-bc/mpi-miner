@@ -1,8 +1,7 @@
 #pragma once
 
-#include "block.h"
 #include <vector>
-#include <string>
+#include "block.h"
 
 class blockchain {
 public:
@@ -13,9 +12,9 @@ public:
 
         bl.index = 0;
         bl.timestamp = time(NULL);
-        bl.data = std::string("Genesis").c_str();
+        bl.data = "Genesis";
         
-        bl.mineBlock(5);
+        bl.mineBlockParalel(8);
 
         chain.emplace_back(bl);
     }
