@@ -25,7 +25,8 @@ int main(int argc, char** argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
 
-    cout << "Comm size: " << nproc << '\n';
+    if (id == MASTER)
+        cout << "Comm size: " << nproc << '\n';
 
     u_long nonceStart = UINT64_MAX / nproc * id;
 
