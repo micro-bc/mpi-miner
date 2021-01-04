@@ -1,9 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <functional>
 #include <string>
-#include <string.h>
 #include <thread>
 #include "util.h"
 
@@ -51,23 +49,6 @@ public:
     u_long getHash() {
         std::hash<std::string> hasher;
         return hasher(getDataToHash());
-    }
-
-    block clone() {
-        block ret;
-
-        ret.index = index;
-        ret.hash = hash;
-        ret.prev_hash = prev_hash;
-        ret.timestamp = timestamp;
-        ret.nonce = nonce;
-        ret.diff = diff;
-
-        int n = sizeof(data);
-        ret.data = new char[n];
-        // strncpy(ret.data, data, n);
-
-        return ret;
     }
 
     void mineBlockSolo(int difficulty, u_long startNonce = 0) {
