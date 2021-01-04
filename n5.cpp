@@ -75,6 +75,8 @@ int main(int argc, char** argv) {
 
         auto start = chrono::steady_clock::now();
         bl.mineBlockParalel(DIFF, nonceStart);
+        // bl.mineBlockParalel(DIFF, nonceStart, 2);
+        // bl.mineBlockSolo(DIFF, nonceStart);
         auto end = chrono::steady_clock::now();
 
         if (!aborted) {
@@ -86,10 +88,10 @@ int main(int argc, char** argv) {
 
         if (id == MASTER) {
             float t = chrono::duration_cast<chrono::milliseconds>(end-start).count();
-            cout << bl.to_string() << '\n' << t << " ms\n";
+            cout << bl.to_string() << " (" << t << " ms)\n";
         }
 
-        break;
+        bc.chain.emplace_back(bl);
     }
 
     MPI_Finalize();

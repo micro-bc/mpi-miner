@@ -13,7 +13,7 @@ public:
         block bl;
 
         bl.index = 0;
-        bl.timestamp = 0;//time(NULL);
+        bl.timestamp = time(NULL);
         bl.data = "Genesis";
         
         bl.mineBlockParalel(difficulty);
@@ -27,7 +27,7 @@ public:
 
         bl.index = last.index + 1;
         bl.prev_hash = last.hash;
-        bl.timestamp = 0;//time(NULL);
+        bl.timestamp = time(NULL);
 
         return bl;
     }
