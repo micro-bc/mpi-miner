@@ -62,12 +62,13 @@ public:
         hash = getHash();
     }
 
-    void mineBlockParalel(int difficulty, u_long startNonce = 0) {
+    void mineBlockParalel(int difficulty, u_long startNonce = 0, u_long proc_count = 0) {
         diff = difficulty;
         nonce = 0;
-        
+
         int i;
-        u_long proc_count = std::thread::hardware_concurrency();
+        if (proc_count == 0)
+            proc_count = std::thread::hardware_concurrency();
 
         std::string data_to_hash = getDataToHash();
 

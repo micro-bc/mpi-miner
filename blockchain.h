@@ -7,15 +7,28 @@ class blockchain {
 public:
     std::vector<block> chain;
 
-    blockchain() {
+    void init(int difficulty) {
+        chain.clear();
+        
         block bl;
 
         bl.index = 0;
-        bl.timestamp = time(NULL);
+        bl.timestamp = 0;//time(NULL);
         bl.data = "Genesis";
         
-        bl.mineBlockParalel(8);
+        bl.mineBlockParalel(difficulty);
 
         chain.emplace_back(bl);
+    }
+
+    block getNextBlock() {
+        block bl;
+        block last = chain.back();
+
+        bl.index = last.index + 1;
+        bl.prev_hash = last.hash;
+        bl.timestamp = 0;//time(NULL);
+
+        return bl;
     }
 };
