@@ -19,27 +19,14 @@ public:
     std::string getDataToHash() {
         std::string data_to_hash;
         data_to_hash.resize(36);
-        int i, j = 0;
 
-        long temp = nonce;
-        for (i = 0; i < sizeof(long); ++i, ++j, temp >>= 8)
-            data_to_hash[j] = (char)temp;
+        u_long *strPtr = (u_long *)data_to_hash.c_str();
 
-        temp = index;
-        for (i = 0; i < sizeof(long); ++i, ++j, temp >>= 8)
-            data_to_hash[j] = (char)temp;
-
-        temp = timestamp;
-        for (i = 0; i < sizeof(long); ++i, ++j, temp >>= 8)
-            data_to_hash[j] = (char)temp;
-
-        temp = diff;
-        for (i = 0; i < sizeof(int); ++i, ++j, temp >>= 8)
-            data_to_hash[j] = (char)temp;
-
-        temp = prev_hash;
-        for (i = 0; i < sizeof(long); ++i, ++j, temp >>= 8)
-            data_to_hash[j] = (char)temp;
+        strPtr[0] = nonce;
+        strPtr[1] = index;
+        strPtr[2] = timestamp;
+        strPtr[3] = prev_hash;
+        *(int *)(&strPtr[4]) = diff;
 
         data_to_hash.append(data);
 
@@ -53,33 +40,16 @@ public:
 
     void mineBlockSolo(int difficulty, u_long startNonce = 0) {
         diff = difficulty;
-        nonce = 0;
 
-        std::string data_to_hash = getDataToHash();
-        
-        mineBlock(data_to_hash, diff, startNonce, nonce);
+        mineBlockSolo(getDataToHash(), difficulty, nonce, startNonce);
 
         hash = getHash();
     }
 
     void mineBlockParalel(int difficulty, u_long startNonce = 0, u_long proc_count = 0) {
         diff = difficulty;
-        nonce = 0;
 
-        int i;
-        if (proc_count == 0)
-            proc_count = std::thread::hardware_concurrency();
-
-        std::string data_to_hash = getDataToHash();
-
-        std::thread *thr = new std::thread[proc_count];
-        for (i = 0; i < proc_count; ++i)
-            thr[i] = std::thread(mineBlock, data_to_hash, diff, startNonce + i, std::ref(nonce), proc_count);
-        
-        for (i = 0; i < proc_count; ++i)
-            thr[i].join();
-        
-        delete[] thr;
+        mineBlockParalel(getDataToHash(), difficulty, nonce, startNonce, proc_count);
 
         hash = getHash();
     }
@@ -99,23 +69,43 @@ public:
         return ret;
     }
 
+    static void mineBlockSolo(std::string data_to_hash, int difficulty, u_long &result, u_long startNonce = 0) {
+        result = 0;
+        
+        mineBlock(data_to_hash, difficulty, startNonce, result);
+    }
+
+    static void mineBlockParalel(std::string data_to_hash, int difficulty, u_long &result, u_long startNonce = 0, u_long proc_count = 0) {
+        result = 0;
+
+        int i;
+        if (proc_count == 0) proc_count = std::thread::hardware_concurrency();
+
+        std::thread *thr = new std::thread[proc_count];
+        for (i = 0; i < proc_count; ++i)
+            thr[i] = std::thread(mineBlock, data_to_hash, difficulty, startNonce + i, std::ref(result), proc_count);
+        
+        for (i = 0; i < proc_count; ++i)
+            thr[i].join();
+        
+        delete[] thr;
+    }
 private:
     static void mineBlock(std::string data_to_hash, u_int diff, u_long startNonce, u_long &result, int inc = 1) {
         std::hash<std::string> hasher;
         long i, temp, mask = (1UL << diff*4) - 1;
 
+        u_long &noncePtr = *(u_long *)data_to_hash.c_str(); // <3
+        noncePtr = startNonce;
+
         while (!result) {
-            temp = startNonce;
-            for (i = 0; i < sizeof(long); ++i, temp >>= 8)
-                data_to_hash[i] = (char)temp;
-            
             temp = hasher(data_to_hash);
             
-            if ((temp & mask) == 0) {
-                result = startNonce;
+            if (!(temp & mask)) {
+                result = noncePtr;
                 return;
             }
-            startNonce += inc;
+            noncePtr += inc;
         }
     }
 };

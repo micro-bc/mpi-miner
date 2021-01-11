@@ -7,17 +7,25 @@
 using namespace std;
 
 #define MASTER 0
-#define GEN_DIFF 6
+#define GEN_DIFF 7
 #define DIFF 8
 #define SOL_TAG 1
 
-void listenSolution(u_long &nonce, bool &aborted) {
-    MPI_Recv(&nonce, 1, MPI_LONG, MPI_ANY_SOURCE, SOL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+void listenSolution(u_long &result, bool &aborted) {
+    MPI_Recv(&result, 1, MPI_LONG, MPI_ANY_SOURCE, SOL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     aborted = true;
 }
 
 int main(int argc, char** argv) {
     int id, nproc;
+    
+    int n;
+    string data_to_hash;
+    u_long result;
+    
+    thread abortThr;
+    bool aborted;
+
     srand(time(0));
     setbuf(stdout, NULL);
 
@@ -47,51 +55,44 @@ int main(int argc, char** argv) {
              << genesis.nonce / t/1000 << " Mhash/s\n";
     }
     
-    char *buffer;
-    thread abortThr;
-    bool aborted;
     while (true) {
         block bl;
         if (id == MASTER) {
             bl = bc.getNextBlock();
             bl.data = "Block " + to_string(bl.index);
+            bl.diff = DIFF;
+
+            data_to_hash = bl.getDataToHash();
+            n = data_to_hash.length();
         }
         
-        MPI_Bcast(&bl.index, 1, MPI_LONG, MASTER, MPI_COMM_WORLD);
-        MPI_Bcast(&bl.prev_hash, 1, MPI_LONG, MASTER, MPI_COMM_WORLD);
-        MPI_Bcast(&bl.timestamp, 1, MPI_LONG, MASTER, MPI_COMM_WORLD);
-        int n = bl.data.length() + 1;
         MPI_Bcast(&n, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
-        if (id == MASTER) buffer = (char*)bl.data.c_str();
-        else buffer = new char[n];
-        MPI_Bcast(buffer, n, MPI_CHAR, MASTER, MPI_COMM_WORLD);
-        if (id != MASTER) {
-            bl.data = string(buffer);
-            delete[] buffer;
-        }
+        if (id != MASTER) data_to_hash.resize(n);
+
+        MPI_Bcast((char *)data_to_hash.c_str(), n, MPI_CHAR, MASTER, MPI_COMM_WORLD);
+        result = 0;
         
         aborted = false;
-        abortThr = thread(listenSolution, ref(bl.nonce), ref(aborted));
+        abortThr = thread(listenSolution, ref(result), ref(aborted));
 
         auto start = chrono::steady_clock::now();
-        bl.mineBlockParalel(DIFF, nonceStart);
-        // bl.mineBlockParalel(DIFF, nonceStart, 2);
-        // bl.mineBlockSolo(DIFF, nonceStart);
+        block::mineBlockParalel(data_to_hash, DIFF, result, nonceStart);
         auto end = chrono::steady_clock::now();
 
         if (!aborted) {
             for (int i = 0; i < nproc; ++i)
-                MPI_Send(&bl.nonce, 1, MPI_LONG, i, SOL_TAG, MPI_COMM_WORLD);
+                MPI_Send(&result, 1, MPI_LONG, i, SOL_TAG, MPI_COMM_WORLD);
         }
-
         abortThr.join();
 
         if (id == MASTER) {
+            bl.nonce = result;
+            bl.hash = bl.getHash();
+
             float t = chrono::duration_cast<chrono::milliseconds>(end-start).count();
             cout << bl.to_string() << " (" << t << " ms)\n";
+            bc.chain.emplace_back(bl);
         }
-
-        bc.chain.emplace_back(bl);
     }
 
     MPI_Finalize();
