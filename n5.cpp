@@ -80,6 +80,7 @@ int main(int argc, char** argv) {
         auto end = chrono::steady_clock::now();
 
         if (!aborted) {
+            printf("Node %d found nonce\n", id);
             for (int i = 0; i < nproc; ++i)
                 MPI_Send(&result, 1, MPI_LONG, i, SOL_TAG, MPI_COMM_WORLD);
         }
